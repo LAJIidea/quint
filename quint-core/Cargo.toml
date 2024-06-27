@@ -1,0 +1,17 @@
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+description = "Quint Core library"
+keywords = ["HPC", "tensor", "machine-learning", "quantum", "mathmatics"]
+categories = ["science", "mathmatics", "quantum", "machine-learning"]
+license = "MIT"
+
+[workspace]
+members = [
+  "quantum"
+]
+
+resolver = "1"
+
+[workspace.dependencies]
+derive_more = "0.99.18"
