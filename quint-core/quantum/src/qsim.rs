@@ -11,6 +11,7 @@ impl QSim {
   }
 
   fn run(&self) {
+    
     println!("Running simulation from file: {}", self.sourcefile);
   }
 }

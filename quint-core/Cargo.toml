@@ -9,6 +9,7 @@ license = "MIT"
 [workspace]
 members = [
   "quantum"
+, "util"
 ]
 
 resolver = "1"
