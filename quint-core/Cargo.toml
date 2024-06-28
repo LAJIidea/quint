@@ -16,3 +16,5 @@ resolver = "1"
 
 [workspace.dependencies]
 derive_more = "0.99.18"
+num-bigint = "0.4.0"
+num-traits = "0.2.14"
