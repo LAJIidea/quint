@@ -1,2 +1,2 @@
-mod qsim;
-mod ast;
+pub mod qsim;
+pub mod ast;
