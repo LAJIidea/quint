@@ -14,8 +14,8 @@ pub enum SemState {
 }
 
 pub struct Location {
-  line: usize,
-  column: usize
+  pub line: usize,
+  pub column: usize
 }
 
 pub trait Node {
@@ -152,7 +152,7 @@ pub trait Expression: Node {
 }
 
 
-struct CopyArgs {
+pub struct CopyArgs {
   prev_semantic: bool
 }
 
@@ -226,7 +226,7 @@ impl std::fmt::Display for Id {
   }
 }
 
-struct Identifier {
+pub struct Identifier {
   base: Option<Arc<Mutex<dyn Expression>>>,
   id: Id
 }
