@@ -10,3 +10,4 @@ doctest = false
 [dependencies]
 derive_more.workspace = true
 once_cell.workspace = true
+downcast-rs.workspace = true

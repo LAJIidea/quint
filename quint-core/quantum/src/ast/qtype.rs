@@ -38,6 +38,13 @@ impl CTypeTy {
   pub fn init(&mut self, self_rc: Rc<RefCell<dyn Expression>>) {
     self.base = Some(self_rc);
   }
+
+  pub fn equals(&self, other: RcMutExpr) -> bool {
+    if let Some(t) = other.borrow().downcast_ref::<CTypeTy>() {
+      return true;
+    }
+    false
+  }
 }
 
 impl Expression for CTypeTy{
@@ -49,8 +56,11 @@ impl Expression for CTypeTy{
       
   }
 
-  fn copy_impl(&self, args: CopyArgs) -> Box<dyn Expression> {
-    Box::new(CTypeTy {base: None})
+  fn copy_impl(&self, args: CopyArgs) -> RcMutExpr {
+    match self.base.clone() {
+      None => ctype(),
+      Some(t) => t
+    }
   }
 
   fn eval_impl(&self, ntype: &Option<RcMutExpr>) -> RcMutExpr {

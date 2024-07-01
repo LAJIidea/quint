@@ -97,4 +97,7 @@ fn main() {
         println!("false")
       }   
     }
+
+  println!("a == b is: {}", ty.borrow().equals(ty2));
+  println!("a == b is: {}", ty.borrow().equals(va2))
 }

@@ -1,9 +1,11 @@
+use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::{clone, fmt, ptr};
 use std::collections::HashMap;
 use std::sync::{Mutex, Once, Arc};
 use std::hash::{Hash, Hasher};
+use downcast_rs::{Downcast, impl_downcast};
 
 use crate::ast::qtype::Annotation;
 
@@ -33,13 +35,13 @@ pub type RcMutExpr = Rc<RefCell<dyn Expression>>;
 type BoxExpr = Box<dyn Expression>;
 type RcExpr = Rc<dyn Expression>;
 
-pub trait Expression: Node {
+pub trait Expression: Node + Downcast {
   fn expr_type(&self) -> Option<RcMutExpr>;
   fn set_type_expr(&mut self, type_expr: &Option<RcMutExpr>);
   fn bracket(&self) -> usize;
   fn set_brackets(&mut self, brackets: usize);
 
-  fn copy_impl(&self, args: CopyArgs) -> Box<dyn Expression>;
+  fn copy_impl(&self, args: CopyArgs) -> RcMutExpr;
   fn eval_impl(&self, ntype: &Option<RcMutExpr>) -> RcMutExpr;
 
   fn eval(&self) -> RcMutExpr {
@@ -154,6 +156,7 @@ pub trait Expression: Node {
   }
 }
 
+impl_downcast!(Expression);
 
 pub struct CopyArgs {
   prev_semantic: bool
@@ -244,8 +247,8 @@ impl Expression for Identifier {
       
   }
 
-  fn copy_impl(&self, args: CopyArgs) -> Box<dyn Expression> {
-    Box::new(Identifier{base: None, id: Id::intern("")})
+  fn copy_impl(&self, args: CopyArgs) -> RcMutExpr {
+    Rc::new(RefCell::new(Identifier{base: None, id: Id::intern("s")}))
   }
 
   fn eval_impl(&self, ntype: &Option<RcMutExpr>) -> RcMutExpr {
