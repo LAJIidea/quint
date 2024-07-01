@@ -1,6 +1,7 @@
 use quantum::ast::expression::{Expression, Id, Identifier};
 
 use std::{ptr, rc::Rc, sync::{Arc, Mutex}};
+use std::cell::RefCell;
 
 
 trait B: Send + Sync {
@@ -65,9 +66,16 @@ fn main() {
       print!("true")
     }
 
-    let var1 = Arc::new(Mutex::new(Identifier{base: None, id: Id::intern("2")}));
-    let va2 = Arc::clone(&var1);
-    if ptr::eq(var1.lock().unwrap().as_ptr(), va2.lock().unwrap().as_ptr()) {
+    let var1 = Rc::new(RefCell::new(Identifier{base: None, id: Id::intern("2")}));
+    let va2 = Rc::clone(&var1);
+    if ptr::eq(var1.as_ptr(), va2.as_ptr()){
+      println!("true")
+    }
+
+    let var3 = Arc::new(Mutex::new(Identifier{base: None, id: Id::intern("2")}));
+    let ptr3 = var3.lock().unwrap().as_ptr();
+    let ptr4 = var3.lock().unwrap().as_ptr();
+    if ptr::eq(ptr3, ptr4) {
       println!("true")
     }
 }
