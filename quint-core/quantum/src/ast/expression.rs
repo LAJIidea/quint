@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::rc::Rc;
 use std::{clone, fmt, ptr};
 use std::collections::HashMap;
@@ -28,38 +29,39 @@ pub trait Node {
 
 type ArcExpr = Arc<dyn Expression>;
 pub type ArcMutExpr = Arc<Mutex<dyn Expression>>;
+pub type RcMutExpr = Rc<RefCell<dyn Expression>>;
 type BoxExpr = Box<dyn Expression>;
 type RcExpr = Rc<dyn Expression>;
 
 pub trait Expression: Node {
-  fn expr_type(&self) -> Option<ArcMutExpr>;
-  fn set_type_expr(&mut self, type_expr: &Option<ArcMutExpr>);
+  fn expr_type(&self) -> Option<RcMutExpr>;
+  fn set_type_expr(&mut self, type_expr: &Option<RcMutExpr>);
   fn bracket(&self) -> usize;
   fn set_brackets(&mut self, brackets: usize);
 
   fn copy_impl(&self, args: CopyArgs) -> Box<dyn Expression>;
-  fn eval_impl(&self, ntype: &Option<ArcMutExpr>) -> ArcMutExpr;
+  fn eval_impl(&self, ntype: &Option<RcMutExpr>) -> RcMutExpr;
 
-  fn eval(&self) -> ArcMutExpr {
+  fn eval(&self) -> RcMutExpr {
     let ntype = match self.expr_type() {
         None => None,
         Some(t) => {
-          if ptr::eq(self.as_ptr(), t.lock().unwrap().as_ptr()) {
+          if ptr::eq(self.as_ptr(), t.borrow().as_ptr()) {
             None
           } else {
-            Some(t.lock().unwrap().eval())
+            Some(t.borrow().eval())
           }
         }
     };
     let mut r = self.eval_impl(&ntype);
-    if r.lock().unwrap().expr_type().is_none() {
-      r.lock().unwrap().set_type_expr(&ntype)
-    } else if ptr::eq(self.as_ptr(), r.lock().unwrap().as_ptr()) {
+    if r.borrow().expr_type().is_none() {
+      r.borrow_mut().set_type_expr(&ntype)
+    } else if ptr::eq(self.as_ptr(), r.borrow().as_ptr()) {
       return r;  
     } else {
-      match (r.lock().unwrap().expr_type(), ntype) {
+      match (r.borrow().expr_type(), ntype) {
         (Some(val1), Some(val2)) => {
-          if !ptr::eq(val1.lock().unwrap().as_ptr(), val2.lock().unwrap().as_ptr()) {
+          if !ptr::eq(val1.as_ptr(), val2.as_ptr()) {
             panic!("this error")
           }
         }
@@ -68,10 +70,10 @@ pub trait Expression: Node {
         (None, None) => {}
       }
     }
-    if r.lock().unwrap().loc().line == 0 {
-      r.lock().unwrap().set_loc(self.loc());
+    if r.borrow().loc().line == 0 {
+      r.borrow().set_loc(self.loc());
     }
-    r.lock().unwrap().set_sstate(&SemState::Completed);
+    r.borrow().set_sstate(&SemState::Completed);
     r 
   }
 
@@ -89,8 +91,8 @@ pub trait Expression: Node {
     }
 
     if let Some(type_expr) = &self.expr_type() {
-      if !ptr::eq(self.as_ptr(), type_expr.lock().unwrap().as_ptr()) {
-        if type_expr.lock().unwrap().has_free_var(id) {
+      if !ptr::eq(self.as_ptr(), type_expr.borrow().as_ptr()) {
+        if type_expr.borrow().has_free_var(id) {
           return true;
         }
       }
@@ -98,45 +100,46 @@ pub trait Expression: Node {
     found
   }
 
-  fn substitute(&self, name: &str, exp: ArcMutExpr) -> ArcMutExpr {
+  fn substitute(&self, name: &str, exp: RcMutExpr) -> RcMutExpr {
     let mut subst = std::collections::HashMap::new();
     subst.insert(name.to_string(), exp);
     self.substitute_map(&subst)
   }
 
-  fn substitute_map(&self, subst: &HashMap<String, ArcMutExpr>) -> ArcMutExpr {
+  fn substitute_map(&self, subst: &HashMap<String, RcMutExpr>) -> RcMutExpr {
     let mut r = self.substitute_impl(subst);
     if let Some(type_expr) = self.expr_type() {
-      if r.lock().unwrap().expr_type().is_none() {
-        if ptr::eq(self.as_ptr(), type_expr.lock().unwrap().as_ptr()) {
-          r.lock().unwrap().set_type_expr(&Some(Arc::clone(&r)));
+      if r.borrow().expr_type().is_none() {
+        if ptr::eq(self.as_ptr(), type_expr.borrow().as_ptr()) {
+          r.borrow_mut().set_type_expr(&Some(Rc::clone(&r)));
         } else {
-          r.lock().unwrap().set_type_expr(&Some(type_expr.lock().unwrap().substitute_map(subst)));
+          r.borrow_mut().set_type_expr(&Some(type_expr.borrow().substitute_map(subst)));
         }
       }
     }
     r
   }
 
-  fn substitute_impl(&self, subst: &HashMap<String, ArcMutExpr>) -> ArcMutExpr;
+  fn substitute_impl(&self, subst: &HashMap<String, RcMutExpr>) -> RcMutExpr;
 
   fn unify_impl(&self, 
-                rhs: ArcMutExpr,
-                subst: &HashMap<String, ArcMutExpr>,
+                rhs: RcMutExpr,
+                subst: &HashMap<String, RcMutExpr>,
                 meet: bool) -> bool;
   fn unify(&self, 
-           rhs: ArcMutExpr,
-           subst: &HashMap<String, ArcMutExpr>,
+           rhs: RcMutExpr,
+           subst: &HashMap<String, RcMutExpr>,
            meet: bool) -> bool {
-    self.unify_impl(Arc::clone(&rhs), subst, meet) || self.eval().lock().unwrap().unify_impl(rhs, subst, meet)  }   
+    self.unify_impl(Rc::clone(&rhs), subst, meet) || self.eval().borrow().unify_impl(rhs, subst, meet)  
+  }   
 
-  fn components(&self) -> Vec<ArcMutExpr>;
+  fn components(&self) -> Vec<RcMutExpr>;
 
-  fn subexpressions(&self) -> Vec<ArcMutExpr>;
+  fn subexpressions(&self) -> Vec<RcMutExpr>;
 
-  fn is_subtype(&self, rhs: &ArcMutExpr) -> bool;
+  fn is_subtype(&self, rhs: &RcMutExpr) -> bool;
   
-  fn combine_type(&self, rhs: &ArcMutExpr, meet: bool);
+  fn combine_type(&self, rhs: &RcMutExpr, meet: bool);
 
   fn is_tuple(&self);
 
@@ -237,7 +240,7 @@ impl Expression for Identifier {
       1
   }
 
-  fn set_type_expr(&mut self, type_expr: &Option<ArcMutExpr>) {
+  fn set_type_expr(&mut self, type_expr: &Option<RcMutExpr>) {
       
   }
 
@@ -245,11 +248,11 @@ impl Expression for Identifier {
     Box::new(Identifier{base: None, id: Id::intern("")})
   }
 
-  fn eval_impl(&self, ntype: &Option<ArcMutExpr>) -> ArcMutExpr {
-    Arc::new(Mutex::new(Identifier{base: None, id: Id::intern("s")}))
+  fn eval_impl(&self, ntype: &Option<RcMutExpr>) -> RcMutExpr {
+    Rc::new(RefCell::new(Identifier{base: None, id: Id::intern("s")}))
   }
 
-  fn expr_type(&self) -> Option<ArcMutExpr> {
+  fn expr_type(&self) -> Option<RcMutExpr> {
       None
   }
 
@@ -261,30 +264,30 @@ impl Expression for Identifier {
     false
   }
 
-  fn substitute_impl(&self, subst: &HashMap<String, ArcMutExpr>) -> ArcMutExpr {
-    Arc::new(Mutex::new(Identifier{base: None, id: Id::intern("s")}))
+  fn substitute_impl(&self, subst: &HashMap<String, RcMutExpr>) -> RcMutExpr {
+    Rc::new(RefCell::new(Identifier{base: None, id: Id::intern("s")}))
   }
 
   fn unify_impl(&self, 
-                  rhs: ArcMutExpr,
-                  subst: &HashMap<String, ArcMutExpr>,
+                  rhs: RcMutExpr,
+                  subst: &HashMap<String, RcMutExpr>,
                   meet: bool) -> bool {
       false
   }
 
-  fn combine_type(&self, rhs: &ArcMutExpr, meet: bool) {
+  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) {
       
   }
 
-  fn components(&self) -> Vec<ArcMutExpr> {
+  fn components(&self) -> Vec<RcMutExpr> {
     Vec::new()
   }
 
-  fn subexpressions(&self) -> Vec<ArcMutExpr> {
+  fn subexpressions(&self) -> Vec<RcMutExpr> {
     Vec::new()
   }
 
-  fn is_subtype(&self, rhs: &ArcMutExpr) -> bool {
+  fn is_subtype(&self, rhs: &RcMutExpr) -> bool {
     false
   }
 

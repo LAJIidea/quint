@@ -1,8 +1,9 @@
-use std::{borrow::BorrowMut, ptr, sync::{Arc, Mutex}};
+use std::{borrow::BorrowMut, cell::RefCell, ptr, rc::Rc, sync::{Arc, Mutex}};
 use std::collections::HashMap;
 use once_cell::sync::Lazy;
 
-use crate::ast::expression::{ArcMutExpr, Expression, CopyArgs, Location, SemState, Identifier, Node};
+use crate::ast::util::ctype;
+use crate::ast::expression::{RcMutExpr, Expression, CopyArgs, Location, SemState, Identifier, Node};
 
 pub enum Annotation {
  Null,
@@ -10,8 +11,8 @@ pub enum Annotation {
  Qfree
 }
 
-fn is_same_type(lhs: ArcMutExpr, rhs: ArcMutExpr) -> bool {
-  return ptr::eq(lhs.lock().unwrap().eval().lock().unwrap().as_ptr(), rhs.lock().unwrap().eval().lock().unwrap().as_ptr());
+fn is_same_type(lhs: RcMutExpr, rhs: RcMutExpr) -> bool {
+  return ptr::eq(lhs.borrow().eval().as_ptr(), rhs.borrow().eval().as_ptr());
 }
 
 enum NumericType {
@@ -24,85 +25,80 @@ enum NumericType {
   ℂ
 }
 
-struct CTypeTy {
-  base: Option<Arc<Mutex<dyn Expression>>>,
+pub struct CTypeTy {
+  pub base: Option<Rc<RefCell<dyn Expression>>>,
 }
 
 impl CTypeTy {
-  fn new() -> Arc<Mutex<Self>> {
-    let mut instance = Arc::new(Mutex::new(CTypeTy { base: None}));
-    let arc_instance = Arc::clone(&instance);
-    {
-      let mut mut_instance = instance.lock().unwrap();
-      mut_instance.init(arc_instance)
-    }
+  pub fn new() -> Rc<RefCell<CTypeTy>> {
+    let instance = Rc::new(RefCell::new(CTypeTy { base: None }));
     instance
   }
 
-  fn init(&mut self, self_arc: Arc<Mutex<dyn Expression>>) {
-    self.base = Some(self_arc)
+  pub fn init(&mut self, self_rc: Rc<RefCell<dyn Expression>>) {
+    self.base = Some(self_rc);
   }
 }
 
 impl Expression for CTypeTy{
   fn bracket(&self) -> usize {
     1
-}
+  }
 
-fn set_type_expr(&mut self, type_expr: &Option<ArcMutExpr>) {
-    
-}
+  fn set_type_expr(&mut self, type_expr: &Option<RcMutExpr>) {
+      
+  }
 
-fn copy_impl(&self, args: CopyArgs) -> Box<dyn Expression> {
-  Box::new(CTypeTy {base: None})
-}
+  fn copy_impl(&self, args: CopyArgs) -> Box<dyn Expression> {
+    Box::new(CTypeTy {base: None})
+  }
 
-fn eval_impl(&self, ntype: &Option<ArcMutExpr>) -> ArcMutExpr {
-  Arc::new(Mutex::new(CTypeTy {base: None}))
-}
+  fn eval_impl(&self, ntype: &Option<RcMutExpr>) -> RcMutExpr {
+    Rc::new(RefCell::new(CTypeTy {base: None}))
+  }
 
-fn expr_type(&self) -> Option<ArcMutExpr> {
-    None
-}
+  fn expr_type(&self) -> Option<RcMutExpr> {
+      None
+  }
 
-fn set_brackets(&mut self, brackets: usize) {
-    
-}
+  fn set_brackets(&mut self, brackets: usize) {
+      
+  }
 
-fn free_vars_impl(&self, f: &mut dyn FnMut(Identifier) -> bool) -> bool {
-  false
-}
-
-fn substitute_impl(&self, subst: &HashMap<String, ArcMutExpr>) -> ArcMutExpr {
-  Arc::new(Mutex::new(CTypeTy {base: None}))
-}
-
-fn unify_impl(&self, 
-                rhs: ArcMutExpr,
-                subst: &HashMap<String, ArcMutExpr>,
-                meet: bool) -> bool {
+  fn free_vars_impl(&self, f: &mut dyn FnMut(Identifier) -> bool) -> bool {
     false
-}
+  }
 
-fn combine_type(&self, rhs: &ArcMutExpr, meet: bool) {
-    
-}
+  fn substitute_impl(&self, subst: &HashMap<String, RcMutExpr>) -> RcMutExpr {
+    Rc::new(RefCell::new(CTypeTy {base: None}))
+  }
 
-fn components(&self) -> Vec<ArcMutExpr> {
-  Vec::new()
-}
+  fn unify_impl(&self, 
+                  rhs: RcMutExpr,
+                  subst: &HashMap<String, RcMutExpr>,
+                  meet: bool) -> bool {
+      false
+  }
 
-fn subexpressions(&self) -> Vec<ArcMutExpr> {
-  Vec::new()
-}
+  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) {
+      
+  }
 
-fn is_subtype(&self, rhs: &ArcMutExpr) -> bool {
-  false
-}
+  fn components(&self) -> Vec<RcMutExpr> {
+    Vec::new()
+  }
 
-fn is_tuple(&self) {
-    
-}
+  fn subexpressions(&self) -> Vec<RcMutExpr> {
+    Vec::new()
+  }
+
+  fn is_subtype(&self, rhs: &RcMutExpr) -> bool {
+    false
+  }
+
+  fn is_tuple(&self) {
+      
+  }
 }
 
 impl Node for CTypeTy {

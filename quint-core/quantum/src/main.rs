@@ -1,4 +1,5 @@
 use quantum::ast::expression::{Expression, Id, Identifier};
+use quantum::ast::qtype::CTypeTy;
 
 use std::{ptr, rc::Rc, sync::{Arc, Mutex}};
 use std::cell::RefCell;
@@ -77,5 +78,23 @@ fn main() {
     let ptr4 = var3.lock().unwrap().as_ptr();
     if ptr::eq(ptr3, ptr4) {
       println!("true")
+    }
+
+    let ty = CTypeTy::new();
+    let ty2 = CTypeTy::new();
+    let rc_instance = Rc::clone(&ty);
+    ty.borrow_mut().init(rc_instance);
+    let base = ty.borrow().base.clone();
+    match base {
+      Some(b) => {
+        if ptr::eq(ty2.borrow().as_ptr(), b.borrow().as_ptr()) {
+          println!("true")
+        } else {
+          println!("false")
+        }
+      },
+      None => {
+        println!("false")
+      }   
     }
 }
