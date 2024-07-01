@@ -31,11 +31,16 @@ struct CTypeTy {
 impl CTypeTy {
   fn new() -> Arc<Mutex<Self>> {
     let mut instance = Arc::new(Mutex::new(CTypeTy { base: None}));
+    let arc_instance = Arc::clone(&instance);
     {
-      let mut mut_instance = instance.borrow_mut();
-      mut_instance.lock().unwrap().base = Some(Arc::clone(&instance))
+      let mut mut_instance = instance.lock().unwrap();
+      mut_instance.init(arc_instance)
     }
     instance
+  }
+
+  fn init(&mut self, self_arc: Arc<Mutex<dyn Expression>>) {
+    self.base = Some(self_arc)
   }
 }
 

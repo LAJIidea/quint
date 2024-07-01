@@ -227,8 +227,8 @@ impl std::fmt::Display for Id {
 }
 
 pub struct Identifier {
-  base: Option<Arc<Mutex<dyn Expression>>>,
-  id: Id
+  pub base: Option<Arc<Mutex<dyn Expression>>>,
+  pub id: Id
 }
 
 
