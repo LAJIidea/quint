@@ -11,3 +11,4 @@ doctest = false
 derive_more.workspace = true
 once_cell.workspace = true
 downcast-rs.workspace = true
+pyo3.workspace = true

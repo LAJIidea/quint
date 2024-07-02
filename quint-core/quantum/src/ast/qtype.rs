@@ -144,7 +144,7 @@ impl TypeTy {
     &INSTANCE
   }
   fn paly(&self) {
-    
+    print!("play")
   }
 }
 
