@@ -141,7 +141,7 @@ pub trait Expression: Node + Downcast {
 
   fn is_subtype(&self, rhs: &RcMutExpr) -> bool;
   
-  fn combine_type(&self, rhs: &RcMutExpr, meet: bool);
+  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) -> RcMutExpr;
 
   fn is_tuple(&self);
 
@@ -150,6 +150,8 @@ pub trait Expression: Node + Downcast {
   fn get_quantum(&self) {}
 
   fn get_annotation(&self) {}
+
+  fn is_classical(&self) -> bool { false }
 
   fn equals(&self, other: RcMutExpr) -> bool {
     ptr::eq(self.as_ptr(), other.borrow().as_ptr())
@@ -282,8 +284,8 @@ impl Expression for Identifier {
       false
   }
 
-  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) {
-      
+  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) -> RcMutExpr {
+    Rc::new(RefCell::new(Identifier{base: None, id: Id::intern("s")}))
   }
 
   fn components(&self) -> Vec<RcMutExpr> {

@@ -1,5 +1,5 @@
 use quantum::ast::expression::{Expression, Id, Identifier};
-use quantum::ast::qtype::CTypeTy;
+use quantum::ast::qtype::{CTypeTy, NumericType};
 
 use std::{ptr, rc::Rc, sync::{Arc, Mutex}};
 use std::cell::RefCell;
@@ -99,5 +99,9 @@ fn main() {
     }
 
   println!("a == b is: {}", ty.borrow().equals(ty2));
-  println!("a == b is: {}", ty.borrow().equals(va2))
+  println!("a == b is: {}", ty.borrow().equals(va2));
+
+  let n1 = NumericType::ℚt;
+  let n2 = NumericType::ℤt;
+  println!("a less than b is: {}", n1 < n2)
 }
