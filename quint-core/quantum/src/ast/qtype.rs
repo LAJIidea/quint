@@ -12,7 +12,7 @@ pub enum Annotation {
 }
 
 fn is_same_type(lhs: RcMutExpr, rhs: RcMutExpr) -> bool {
-  return ptr::eq(lhs.borrow().eval().as_ptr(), rhs.borrow().eval().as_ptr());
+  return lhs.borrow().equals(rhs);
 }
 
 enum NumericType {
@@ -23,6 +23,20 @@ enum NumericType {
   ℚt,
   ℝ,
   ℂ
+}
+
+fn get_numeric(which: i32, classical: bool) {
+     
+}
+
+pub fn combine_types(lhs: Option<RcMutExpr>, rhs: Option<RcMutExpr>, meet: bool, allow: bool) -> Option<RcMutExpr> {
+  if lhs.is_none() {
+    return rhs;
+  }
+  if rhs.is_none() {
+    return lhs;
+  }
+  lhs
 }
 
 pub struct CTypeTy {
@@ -37,13 +51,6 @@ impl CTypeTy {
 
   pub fn init(&mut self, self_rc: Rc<RefCell<dyn Expression>>) {
     self.base = Some(self_rc);
-  }
-
-  pub fn equals(&self, other: RcMutExpr) -> bool {
-    if let Some(t) = other.borrow().downcast_ref::<CTypeTy>() {
-      return true;
-    }
-    false
   }
 }
 
@@ -64,7 +71,10 @@ impl Expression for CTypeTy{
   }
 
   fn eval_impl(&self, ntype: &Option<RcMutExpr>) -> RcMutExpr {
-    Rc::new(RefCell::new(CTypeTy {base: None}))
+    match self.base.clone() {
+      None => ctype(),
+      Some(t) => t
+    }
   }
 
   fn expr_type(&self) -> Option<RcMutExpr> {
@@ -80,7 +90,10 @@ impl Expression for CTypeTy{
   }
 
   fn substitute_impl(&self, subst: &HashMap<String, RcMutExpr>) -> RcMutExpr {
-    Rc::new(RefCell::new(CTypeTy {base: None}))
+    match self.base.clone() {
+      None => ctype(),
+      Some(t) => t
+    }
   }
 
   fn unify_impl(&self, 
@@ -108,6 +121,13 @@ impl Expression for CTypeTy{
 
   fn is_tuple(&self) {
       
+  }
+
+  fn equals(&self, other: RcMutExpr) -> bool {
+    if let Some(t) = other.borrow().downcast_ref::<CTypeTy>() {
+      return true;
+    }
+    false
   }
 }
 

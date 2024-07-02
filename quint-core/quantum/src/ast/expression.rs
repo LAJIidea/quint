@@ -48,7 +48,7 @@ pub trait Expression: Node + Downcast {
     let ntype = match self.expr_type() {
         None => None,
         Some(t) => {
-          if ptr::eq(self.as_ptr(), t.borrow().as_ptr()) {
+          if self.equals(t.clone()) {
             None
           } else {
             Some(t.borrow().eval())
@@ -58,12 +58,12 @@ pub trait Expression: Node + Downcast {
     let mut r = self.eval_impl(&ntype);
     if r.borrow().expr_type().is_none() {
       r.borrow_mut().set_type_expr(&ntype)
-    } else if ptr::eq(self.as_ptr(), r.borrow().as_ptr()) {
+    } else if self.equals(r.clone()) {
       return r;  
     } else {
       match (r.borrow().expr_type(), ntype) {
         (Some(val1), Some(val2)) => {
-          if !ptr::eq(val1.as_ptr(), val2.as_ptr()) {
+          if !val1.borrow().equals(val2) {
             panic!("this error")
           }
         }
@@ -93,7 +93,7 @@ pub trait Expression: Node + Downcast {
     }
 
     if let Some(type_expr) = &self.expr_type() {
-      if !ptr::eq(self.as_ptr(), type_expr.borrow().as_ptr()) {
+      if !self.equals(type_expr.clone()) {
         if type_expr.borrow().has_free_var(id) {
           return true;
         }
@@ -112,7 +112,7 @@ pub trait Expression: Node + Downcast {
     let mut r = self.substitute_impl(subst);
     if let Some(type_expr) = self.expr_type() {
       if r.borrow().expr_type().is_none() {
-        if ptr::eq(self.as_ptr(), type_expr.borrow().as_ptr()) {
+        if self.equals(type_expr.clone()) {
           r.borrow_mut().set_type_expr(&Some(Rc::clone(&r)));
         } else {
           r.borrow_mut().set_type_expr(&Some(type_expr.borrow().substitute_map(subst)));
@@ -150,6 +150,10 @@ pub trait Expression: Node + Downcast {
   fn get_quantum(&self) {}
 
   fn get_annotation(&self) {}
+
+  fn equals(&self, other: RcMutExpr) -> bool {
+    ptr::eq(self.as_ptr(), other.borrow().as_ptr())
+  }
 
   fn as_ptr(&self) -> *const () {
     self as *const _ as *const ()
