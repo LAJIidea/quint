@@ -41,7 +41,7 @@ pub trait Expression: Node + Downcast {
   fn bracket(&self) -> usize;
   fn set_brackets(&mut self, brackets: usize);
 
-  fn copy_impl(&self, exp: RcMutExpr, args: CopyArgs) -> RcMutExpr;
+  fn copy_impl(&self, args: CopyArgs) -> RcMutExpr;
   fn eval_impl(&self, ntype: &Option<RcMutExpr>) -> RcMutExpr;
 
   fn eval(&self) -> RcMutExpr {
@@ -141,11 +141,11 @@ pub trait Expression: Node + Downcast {
 
   fn is_subtype(&self, rhs: &RcMutExpr) -> bool;
   
-  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) -> RcMutExpr;
+  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) -> Option<RcMutExpr>;
 
   fn is_tuple(&self);
 
-  fn get_classical(&self) {}
+  fn get_classical(&self) -> Option<RcMutExpr> { None }
 
   fn get_quantum(&self) {}
 
@@ -253,7 +253,7 @@ impl Expression for Identifier {
       
   }
 
-  fn copy_impl(&self, exp: RcMutExpr, args: CopyArgs) -> RcMutExpr {
+  fn copy_impl(&self, args: CopyArgs) -> RcMutExpr {
     Rc::new(RefCell::new(Identifier{base: None, id: Id::intern("s")}))
   }
 
@@ -284,8 +284,8 @@ impl Expression for Identifier {
       false
   }
 
-  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) -> RcMutExpr {
-    Rc::new(RefCell::new(Identifier{base: None, id: Id::intern("s")}))
+  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) -> Option<RcMutExpr> {
+    None
   }
 
   fn components(&self) -> Vec<RcMutExpr> {

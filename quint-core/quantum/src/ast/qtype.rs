@@ -1,3 +1,4 @@
+use core::fmt;
 use std::{borrow::BorrowMut, cell::RefCell, cmp::{max, min}, ptr, rc::Rc, result, sync::{Arc, Mutex}};
 use std::collections::HashMap;
 use once_cell::sync::Lazy;
@@ -5,6 +6,9 @@ use once_cell::sync::Lazy;
 use crate::ast::util::ctype;
 use crate::ast::expression::{RcMutExpr, Expression, CopyArgs, Location, SemState, Identifier, Node};
 
+use super::util::{qnumeric, type_ty};
+
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub enum Annotation {
  Null,
  Mfree,
@@ -72,6 +76,33 @@ fn get_numeric(which: NumericType, classical: bool) -> Option<RcMutExpr> {
   }
 }
 
+pub fn is_subtype(lhs: Option<RcMutExpr>, rhs: Option<RcMutExpr>) -> bool {
+  match (lhs, rhs) {
+    (None, None) => { return false; }
+    (_, None) => { return false; }
+    (None, _) => { return false; }
+    (Some(t1), Some(t2)) => {
+      if t1.borrow().equals(t2.clone()) {
+        return true;
+      }
+      let l = t1.borrow().eval();
+      let r = t2.borrow().eval();
+      if l.borrow().is_classical() && !r.borrow().is_classical() {
+        return is_subtype(Some(l), r.borrow().get_classical());
+      }
+      if !l.borrow().is_classical() && r.borrow().is_classical() {
+        return false;
+      }
+      let wl = which_numeric(l.clone());
+      let wr = which_numeric(r.clone());
+      if wl == NumericType::Null || wr == NumericType::Null {
+        return l.borrow().is_subtype(&r);
+      }
+      return wl <= wr;
+    }
+  }
+}
+
 pub fn combine_types(lhs: Option<RcMutExpr>, rhs: Option<RcMutExpr>, meet: bool, allow: bool) -> Option<RcMutExpr> {
   if lhs.is_none() {
     return rhs;
@@ -88,7 +119,7 @@ pub fn combine_types(lhs: Option<RcMutExpr>, rhs: Option<RcMutExpr>, meet: bool,
     let wl = which_numeric(l.clone());
     let wr = which_numeric(r.clone());
     match (&wl, &wr) {
-      (NumericType::Null, NumericType::Null) => { return Some(l.borrow().combine_type(&r, meet)); }
+      (NumericType::Null, NumericType::Null) => { return l.borrow().combine_type(&r, meet); }
       (NumericType::Null, _) => {return None;}
       (_, NumericType::Null) => { return None; }
       _ => {}
@@ -128,12 +159,12 @@ impl Expression for QNumericTy {
     1
   }
 
-  fn copy_impl(&self, exp: RcMutExpr, args: CopyArgs) -> RcMutExpr {
-    return exp;
+  fn copy_impl(&self, args: CopyArgs) -> RcMutExpr {
+    return Rc::new(RefCell::new(self.clone()));
   }
 
   fn eval_impl(&self, ntype: &Option<RcMutExpr>) -> RcMutExpr {
-    Rc::new(RefCell::new(BoolTy {}))
+    Rc::new(RefCell::new(self.clone()))
   }
 
   fn free_vars_impl(&self, f: &mut dyn FnMut(Identifier) -> bool) -> bool {
@@ -141,14 +172,14 @@ impl Expression for QNumericTy {
   }
 
   fn substitute_impl(&self, subst: &HashMap<String, RcMutExpr>) -> RcMutExpr {
-    Rc::new(RefCell::new(BoolTy {}))
+    Rc::new(RefCell::new(self.clone()))
   }
 
   fn unify_impl(&self, 
                   rhs: RcMutExpr,
                   subst: &HashMap<String, RcMutExpr>,
                   meet: bool) -> bool {
-    false
+    return combine_types(Some(Rc::new(RefCell::new(self.clone()))), Some(rhs), meet, false).is_none();
   }
 
   fn components(&self) -> Vec<RcMutExpr> {
@@ -163,8 +194,8 @@ impl Expression for QNumericTy {
     false
   }
 
-  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) -> RcMutExpr {
-    Rc::new(RefCell::new(BoolTy {}))
+  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) -> Option<RcMutExpr> {
+    None
   }
 
   fn is_tuple(&self) {
@@ -176,6 +207,12 @@ impl Expression for QNumericTy {
       return true;
     }
     false
+  }
+}
+
+impl Clone for QNumericTy {
+  fn clone(&self) -> Self {
+      return Self { base: self.base.clone(), annotation: self.annotation.clone() };
   }
 }
 
@@ -201,6 +238,14 @@ impl Node for QNumericTy {
   }
 }
 
+
+
+impl fmt::Display for QNumericTy {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "qnumeric")
+  }
+}
+
 pub struct BoolTy {
 
 }
@@ -222,7 +267,7 @@ impl Expression for BoolTy {
     1
   }
 
-  fn copy_impl(&self, exp: RcMutExpr, args: CopyArgs) -> RcMutExpr {
+  fn copy_impl(&self, args: CopyArgs) -> RcMutExpr {
     Rc::new(RefCell::new(BoolTy {}))
   }
 
@@ -257,8 +302,8 @@ impl Expression for BoolTy {
     false
   }
 
-  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) -> RcMutExpr {
-    Rc::new(RefCell::new(BoolTy {}))
+  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) -> Option<RcMutExpr> {
+    None
   }
 
   fn is_tuple(&self) {
@@ -309,7 +354,7 @@ impl Expression for ℚTy {
     1
   }
 
-  fn copy_impl(&self, exp: RcMutExpr, args: CopyArgs) -> RcMutExpr {
+  fn copy_impl(&self, args: CopyArgs) -> RcMutExpr {
     Rc::new(RefCell::new(BoolTy {}))
   }
 
@@ -344,8 +389,8 @@ impl Expression for ℚTy {
     false
   }
 
-  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) -> RcMutExpr {
-    Rc::new(RefCell::new(BoolTy {}))
+  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) -> Option<RcMutExpr> {
+    None
   }
 
   fn is_tuple(&self) {
@@ -396,7 +441,7 @@ impl Expression for ℤTy {
     1
   }
 
-  fn copy_impl(&self, exp: RcMutExpr, args: CopyArgs) -> RcMutExpr {
+  fn copy_impl(&self, args: CopyArgs) -> RcMutExpr {
     Rc::new(RefCell::new(BoolTy {}))
   }
 
@@ -431,8 +476,8 @@ impl Expression for ℤTy {
     false
   }
 
-  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) -> RcMutExpr {
-    Rc::new(RefCell::new(BoolTy {}))
+  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) -> Option<RcMutExpr> {
+    None
   }
 
   fn is_tuple(&self) {
@@ -483,7 +528,7 @@ impl Expression for ℕTy {
     1
   }
 
-  fn copy_impl(&self, exp: RcMutExpr, args: CopyArgs) -> RcMutExpr {
+  fn copy_impl(&self, args: CopyArgs) -> RcMutExpr {
     Rc::new(RefCell::new(BoolTy {}))
   }
 
@@ -518,8 +563,8 @@ impl Expression for ℕTy {
     false
   }
 
-  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) -> RcMutExpr {
-    Rc::new(RefCell::new(BoolTy {}))
+  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) -> Option<RcMutExpr> {
+    None
   }
 
   fn is_tuple(&self) {
@@ -570,7 +615,7 @@ impl Expression for ℝTy {
     1
   }
 
-  fn copy_impl(&self, exp: RcMutExpr, args: CopyArgs) -> RcMutExpr {
+  fn copy_impl(&self, args: CopyArgs) -> RcMutExpr {
     Rc::new(RefCell::new(BoolTy {}))
   }
 
@@ -605,8 +650,8 @@ impl Expression for ℝTy {
     false
   }
 
-  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) -> RcMutExpr {
-    Rc::new(RefCell::new(BoolTy {}))
+  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) -> Option<RcMutExpr> {
+    None
   }
 
   fn is_tuple(&self) {
@@ -657,7 +702,7 @@ impl Expression for ℂTy {
     1
   }
 
-  fn copy_impl(&self, exp: RcMutExpr, args: CopyArgs) -> RcMutExpr {
+  fn copy_impl(&self, args: CopyArgs) -> RcMutExpr {
     Rc::new(RefCell::new(BoolTy {}))
   }
 
@@ -692,8 +737,8 @@ impl Expression for ℂTy {
     false
   }
 
-  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) -> RcMutExpr {
-    Rc::new(RefCell::new(BoolTy {}))
+  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) -> Option<RcMutExpr> {
+    None
   }
 
   fn is_tuple(&self) {
@@ -747,7 +792,7 @@ impl Expression for CTypeTy{
       
   }
 
-  fn copy_impl(&self, exp: RcMutExpr, args: CopyArgs) -> RcMutExpr {
+  fn copy_impl(&self, args: CopyArgs) -> RcMutExpr {
     match self.base.clone() {
       None => ctype(),
       Some(t) => t
@@ -787,8 +832,8 @@ impl Expression for CTypeTy{
       false
   }
 
-  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) -> RcMutExpr {
-    Rc::new(RefCell::new(BoolTy {}))
+  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) -> Option<RcMutExpr> {
+    None
   }
 
   fn components(&self) -> Vec<RcMutExpr> {
@@ -837,22 +882,120 @@ impl Node for CTypeTy {
   }
 }
 
-struct TypeTy {}
-
-static INSTANCE: Lazy<TypeTy> = Lazy::new(|| {
-  TypeTy {  }
-});
+pub struct TypeTy {
+  base: Option<RcMutExpr>
+}
 
 impl TypeTy {
-  fn get_instance() -> &'static TypeTy {
-    &INSTANCE
-  }
-  fn paly(&self) {
-    print!("play")
+  pub fn new() -> Self {
+    TypeTy { base: Some(ctype()) }
   }
 }
 
-fn test() {
-  let a = TypeTy::get_instance();
-  a.paly();
+impl Expression for TypeTy {
+  fn expr_type(&self) -> Option<RcMutExpr> {
+    return self.base.clone();
+  }
+  
+  fn set_type_expr(&mut self, type_expr: &Option<RcMutExpr>) {
+    self.base = type_expr.clone();
+  }
+
+  fn set_brackets(&mut self, brackets: usize) {
+      
+  }
+
+  fn bracket(&self) -> usize {
+    1
+  }
+
+  fn copy_impl(&self, args: CopyArgs) -> RcMutExpr {
+    Rc::new(RefCell::new(self.clone()))
+  }
+
+  fn eval_impl(&self, ntype: &Option<RcMutExpr>) -> RcMutExpr {
+    Rc::new(RefCell::new(self.clone()))
+  }
+
+  fn free_vars_impl(&self, f: &mut dyn FnMut(Identifier) -> bool) -> bool {
+    false
+  }
+
+  fn substitute_impl(&self, subst: &HashMap<String, RcMutExpr>) -> RcMutExpr {
+    Rc::new(RefCell::new(self.clone()))
+  }
+
+  fn unify_impl(&self, 
+                  rhs: RcMutExpr,
+                  subst: &HashMap<String, RcMutExpr>,
+                  meet: bool) -> bool {
+    return combine_types(Some(Rc::new(RefCell::new(self.clone()))), Some(rhs), meet, false).is_none();
+  }
+
+  fn components(&self) -> Vec<RcMutExpr> {
+    Vec::new()
+  }
+
+  fn subexpressions(&self) -> Vec<RcMutExpr> {
+    Vec::new()
+  }
+
+  fn is_subtype(&self, rhs: &RcMutExpr) -> bool {
+    return rhs.borrow().equals(type_ty());
+  }
+
+  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) -> Option<RcMutExpr> {
+    if meet {
+      let expr: RcMutExpr = self.copy_impl(CopyArgs { prev_semantic: false });
+      if rhs.borrow().is_subtype(&expr) {
+        return Some(rhs.clone());
+      }
+      return None;
+    } else {
+      let expr: RcMutExpr = self.copy_impl(CopyArgs { prev_semantic: false });
+      if rhs.borrow().is_subtype(&expr) {
+        return Some(rhs.clone());
+      }
+      return None;
+    }
+  }
+
+  fn is_tuple(&self) {
+      
+  }
+
+  fn equals(&self, other: RcMutExpr) -> bool {
+    if let Some(_) = other.borrow().downcast_ref::<TypeTy>() {
+      return true;
+    }
+    false
+  }
+}
+
+impl Clone for TypeTy {
+  fn clone(&self) -> Self {
+    Self { base: self.base.clone() }
+  }
+}
+
+impl Node for TypeTy {
+  fn loc(&self) -> &Location {
+    &Location { line: 0, column: 0 }
+  }
+
+  fn kind(&self) -> &str {
+      "id"
+  }
+
+  fn sstate(&self) -> &SemState {
+      &SemState::Completed
+  }
+
+  fn set_loc(&self, location: &Location) {
+      
+  }
+
+  fn set_sstate(&self, ss: &SemState) {
+      
+  }
 }
