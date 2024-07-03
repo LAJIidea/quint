@@ -100,7 +100,7 @@ pub fn combine_types(lhs: Option<RcMutExpr>, rhs: Option<RcMutExpr>, meet: bool,
   None
 }
 
-struct QNumericTy {
+pub struct QNumericTy {
   pub base: Option<Rc<RefCell<dyn Expression>>>,
   pub annotation: Annotation
 }
@@ -108,6 +108,96 @@ struct QNumericTy {
 impl QNumericTy {
   fn new() -> Self {
     QNumericTy { base: Some(ctype()), annotation: Annotation::Null }
+  }
+}
+
+impl Expression for QNumericTy {
+  fn expr_type(&self) -> Option<RcMutExpr> {
+    None
+  }
+  
+  fn set_type_expr(&mut self, type_expr: &Option<RcMutExpr>) {
+      
+  }
+
+  fn set_brackets(&mut self, brackets: usize) {
+      
+  }
+
+  fn bracket(&self) -> usize {
+    1
+  }
+
+  fn copy_impl(&self, exp: RcMutExpr, args: CopyArgs) -> RcMutExpr {
+    return exp;
+  }
+
+  fn eval_impl(&self, ntype: &Option<RcMutExpr>) -> RcMutExpr {
+    Rc::new(RefCell::new(BoolTy {}))
+  }
+
+  fn free_vars_impl(&self, f: &mut dyn FnMut(Identifier) -> bool) -> bool {
+    false
+  }
+
+  fn substitute_impl(&self, subst: &HashMap<String, RcMutExpr>) -> RcMutExpr {
+    Rc::new(RefCell::new(BoolTy {}))
+  }
+
+  fn unify_impl(&self, 
+                  rhs: RcMutExpr,
+                  subst: &HashMap<String, RcMutExpr>,
+                  meet: bool) -> bool {
+    false
+  }
+
+  fn components(&self) -> Vec<RcMutExpr> {
+    Vec::new()
+  }
+
+  fn subexpressions(&self) -> Vec<RcMutExpr> {
+    Vec::new()
+  }
+
+  fn is_subtype(&self, rhs: &RcMutExpr) -> bool {
+    false
+  }
+
+  fn combine_type(&self, rhs: &RcMutExpr, meet: bool) -> RcMutExpr {
+    Rc::new(RefCell::new(BoolTy {}))
+  }
+
+  fn is_tuple(&self) {
+      
+  }
+
+  fn equals(&self, other: RcMutExpr) -> bool {
+    if let Some(t) = other.borrow().downcast_ref::<QNumericTy>() {
+      return true;
+    }
+    false
+  }
+}
+
+impl Node for QNumericTy {
+  fn loc(&self) -> &Location {
+    &Location { line: 0, column: 0 }
+  }
+
+  fn kind(&self) -> &str {
+      "id"
+  }
+
+  fn sstate(&self) -> &SemState {
+      &SemState::Completed
+  }
+
+  fn set_loc(&self, location: &Location) {
+      
+  }
+
+  fn set_sstate(&self, ss: &SemState) {
+      
   }
 }
 
@@ -132,7 +222,7 @@ impl Expression for BoolTy {
     1
   }
 
-  fn copy_impl(&self, args: CopyArgs) -> RcMutExpr {
+  fn copy_impl(&self, exp: RcMutExpr, args: CopyArgs) -> RcMutExpr {
     Rc::new(RefCell::new(BoolTy {}))
   }
 
@@ -219,7 +309,7 @@ impl Expression for ℚTy {
     1
   }
 
-  fn copy_impl(&self, args: CopyArgs) -> RcMutExpr {
+  fn copy_impl(&self, exp: RcMutExpr, args: CopyArgs) -> RcMutExpr {
     Rc::new(RefCell::new(BoolTy {}))
   }
 
@@ -306,7 +396,7 @@ impl Expression for ℤTy {
     1
   }
 
-  fn copy_impl(&self, args: CopyArgs) -> RcMutExpr {
+  fn copy_impl(&self, exp: RcMutExpr, args: CopyArgs) -> RcMutExpr {
     Rc::new(RefCell::new(BoolTy {}))
   }
 
@@ -393,7 +483,7 @@ impl Expression for ℕTy {
     1
   }
 
-  fn copy_impl(&self, args: CopyArgs) -> RcMutExpr {
+  fn copy_impl(&self, exp: RcMutExpr, args: CopyArgs) -> RcMutExpr {
     Rc::new(RefCell::new(BoolTy {}))
   }
 
@@ -480,7 +570,7 @@ impl Expression for ℝTy {
     1
   }
 
-  fn copy_impl(&self, args: CopyArgs) -> RcMutExpr {
+  fn copy_impl(&self, exp: RcMutExpr, args: CopyArgs) -> RcMutExpr {
     Rc::new(RefCell::new(BoolTy {}))
   }
 
@@ -567,7 +657,7 @@ impl Expression for ℂTy {
     1
   }
 
-  fn copy_impl(&self, args: CopyArgs) -> RcMutExpr {
+  fn copy_impl(&self, exp: RcMutExpr, args: CopyArgs) -> RcMutExpr {
     Rc::new(RefCell::new(BoolTy {}))
   }
 
@@ -657,7 +747,7 @@ impl Expression for CTypeTy{
       
   }
 
-  fn copy_impl(&self, args: CopyArgs) -> RcMutExpr {
+  fn copy_impl(&self, exp: RcMutExpr, args: CopyArgs) -> RcMutExpr {
     match self.base.clone() {
       None => ctype(),
       Some(t) => t

@@ -41,7 +41,7 @@ pub trait Expression: Node + Downcast {
   fn bracket(&self) -> usize;
   fn set_brackets(&mut self, brackets: usize);
 
-  fn copy_impl(&self, args: CopyArgs) -> RcMutExpr;
+  fn copy_impl(&self, exp: RcMutExpr, args: CopyArgs) -> RcMutExpr;
   fn eval_impl(&self, ntype: &Option<RcMutExpr>) -> RcMutExpr;
 
   fn eval(&self) -> RcMutExpr {
@@ -165,7 +165,7 @@ pub trait Expression: Node + Downcast {
 impl_downcast!(Expression);
 
 pub struct CopyArgs {
-  prev_semantic: bool
+  pub prev_semantic: bool
 }
 
 #[derive(Clone, Debug)]
@@ -253,7 +253,7 @@ impl Expression for Identifier {
       
   }
 
-  fn copy_impl(&self, args: CopyArgs) -> RcMutExpr {
+  fn copy_impl(&self, exp: RcMutExpr, args: CopyArgs) -> RcMutExpr {
     Rc::new(RefCell::new(Identifier{base: None, id: Id::intern("s")}))
   }
 

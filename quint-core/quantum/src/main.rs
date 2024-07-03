@@ -1,5 +1,5 @@
-use quantum::ast::expression::{Expression, Id, Identifier};
-use quantum::ast::qtype::{CTypeTy, NumericType};
+use quantum::ast::expression::{Expression, Id, Identifier, CopyArgs};
+use quantum::ast::qtype::{Annotation, CTypeTy, NumericType, QNumericTy};
 
 use std::{ptr, rc::Rc, sync::{Arc, Mutex}};
 use std::cell::RefCell;
@@ -103,5 +103,9 @@ fn main() {
 
   let n1 = NumericType::ℚt;
   let n2 = NumericType::ℤt;
-  println!("a less than b is: {}", n1 < n2)
+  println!("a less than b is: {}", n1 < n2);
+
+  let qty = Rc::new(RefCell::new(QNumericTy{base: None, annotation: Annotation::Null}));
+  let qty_clone = qty.borrow().copy_impl(qty.clone(), CopyArgs{prev_semantic: false});
+  println!("a == b is: {}", qty.borrow().equals(qty_clone))
 }
